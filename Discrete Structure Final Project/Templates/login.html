@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BISU Login</title>
+    <style>
+        body { font-family: sans-serif; background: #ecf0f1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 350px; }
+        h2 { text-align: center; color: #2c3e50; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #2980b9; }
+        .fsm-bar { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
+        .fsm-state { padding: 4px 8px; background: #eee; font-size: 0.7em; border-radius: 10px; color: #666; font-weight: bold; }
+        .fsm-state.active { background: #3498db; color: white; }
+        .error { color: red; text-align: center; margin-top: 10px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>System Login</h2>
+        
+        <!-- FSM -->
+        <div class="fsm-bar" id="fsmVisualizer">
+            <div class="fsm-state" id="state-Idle">Idle</div>
+            <div class="fsm-state" id="state-Login">Login</div>
+            <div class="fsm-state" id="state-Access_Granted">Granted</div>
+            <div class="fsm-state" id="state-Access_Denied">Denied</div>
+        </div>
+
+        <form id="loginForm">
+            <input type="text" id="userId" placeholder="User ID (e.g. S001)" required>
+            <input type="password" id="password" placeholder="Password (e.g. pass123)" required>
+            <button type="submit">Log In</button>
+        </form>
+        <div id="errorMsg" class="error"></div>
+    </div>
+
+    <script>
+        function updateFSM(state) {
+            document.querySelectorAll('.fsm-state').forEach(el => el.classList.remove('active'));
+            let el = document.getElementById('state-' + state.replace(" ", "_"));
+            if (el) el.classList.add('active');
+        }
+        updateFSM("Idle");
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            updateFSM("Login");
+            const res = await fetch('/api/navigate', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    user_id: document.getElementById('userId').value,
+                    password: document.getElementById('password').value,
+                    start: "Main Gate", destination: "Science Hall" // dummy data para mo-validate
+                })
+            });
+            const data = await res.json();
+            
+            if (data.error) {
+                updateFSM("Access Denied");
+                document.getElementById('errorMsg').innerText = data.error;
+            } else {
+                updateFSM("Access_Granted");
+                // I-redirect sa Dashboard
+                setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+            }
+        });
+    </script>
+</body>
+</html>
