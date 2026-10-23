@@ -20,6 +20,7 @@
     </style>
 </head>
 <body>
+    <div id="app-data" data-matrix='{{ data | tojson }}' hidden></div>
     <div class="container">
         <div class="card full" style="background:#2c3e50; color:white; display:flex; justify-content:space-between; align-items:center;">
             <h2 style="margin:0;">Campus Dashboard <small style="font-weight:normal;">(Logged in: {{ user }})</small></h2>
@@ -61,7 +62,7 @@
     </div>
 
     <script>
-        const matrixData = {{ data | safe }};
+        const matrixData = JSON.parse(document.getElementById('app-data').dataset.matrix);
 
         function renderMatrix() {
             const t = document.getElementById('matrixTable');

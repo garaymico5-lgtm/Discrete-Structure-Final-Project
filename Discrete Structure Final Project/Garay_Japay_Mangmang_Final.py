@@ -16,7 +16,6 @@ Discrete Structures topics used:
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from functools import wraps
 import math
-import json
 import random
 
 app = Flask(__name__)
@@ -294,7 +293,7 @@ def login_page():
 @login_required
 def dashboard_page():
     return render_template('dashboard.html',
-                           data=json.dumps(system.get_matrix_for_html()),
+                           data=system.get_matrix_for_html(),
                            user=session["user"])
 
 
