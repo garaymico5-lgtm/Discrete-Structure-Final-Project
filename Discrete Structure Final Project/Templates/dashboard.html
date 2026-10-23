@@ -16,16 +16,16 @@
         .matrix-table th, .matrix-table td { border: 1px solid #ddd; padding: 5px; text-align: center; }
         .matrix-table th { background: #2c3e50; color: white; }
         .granted { background: #d4edda; } .denied { background: #f8d7da; }
+        .note { font-size: 0.8em; color: #666; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card full" style="background:#2c3e50; color:white; display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="margin:0;">Campus Dashboard</h2>
-            <button class="btn-red" style="width:auto; margin:0; padding:8px 15px;" onclick="window.location.href='/'">Logout</button>
+            <h2 style="margin:0;">Campus Dashboard <small style="font-weight:normal;">(Logged in: {{ user }})</small></h2>
+            <button class="btn-red" style="width:auto; margin:0; padding:8px 15px;" onclick="window.location.href='/logout'">Logout</button>
         </div>
 
-        <!-- NAVIGATION -->
         <div class="card">
             <h3>Navigation</h3>
             <input type="text" id="startLoc" value="Main Gate" placeholder="Start">
@@ -34,45 +34,46 @@
             <div class="terminal" id="navOut">Ready...</div>
         </div>
 
-        <!-- MONITORING & ADD USER -->
         <div class="card">
             <h3>Live Monitoring</h3>
             <button class="btn-orange" onclick="doMonitor()">Refresh Data</button>
             <div class="terminal" id="monOut" style="height:100px;">No data.</div>
 
             <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
-            
+
             <h3>Add User</h3>
             <input type="text" id="newId" placeholder="New User ID (e.g. S099)">
-            <select id="newType"><option value="student">Student</option><option value="faculty">Faculty</option></select>
+            <select id="newType">
+                <option value="student">Student</option>
+                <option value="faculty">Faculty</option>
+                <option value="staff">Staff</option>
+                <option value="visitor">Visitor</option>
+            </select>
             <button class="btn-green" onclick="doAddUser()">Add to Matrix</button>
             <div id="addMsg" style="font-weight:bold; font-size:0.9em;"></div>
         </div>
 
-        <!-- MATRIX -->
         <div class="card full">
             <h3>Access Matrix</h3>
+            <div class="note">Shows effective access: Exists AND Authorized AND NOT Restricted AND has room permission. Level = number of rooms accessible.</div>
             <table class="matrix-table" id="matrixTable"></table>
         </div>
     </div>
 
     <script>
-        // Kini nga data kay gipasa gikan sa Python (dashboard route)
-        const matrixData = JSON.parse('{{ data | safe }}');
-        
-        // Dummy user para sa API (Kay wala tay sessions, mo-pasang lang tag user)
-        const currentUser = "S001"; 
+        const matrixData = {{ data | safe }};
 
         function renderMatrix() {
             const t = document.getElementById('matrixTable');
-            let hr = '<tr><th>User</th>';
-            matrixData.headers.forEach(r => hr += `<th>${r}</th>`);
-            hr += '<th>Lvl</th></tr>'; t.innerHTML = hr;
+            let html = '<tr><th>User</th>';
+            matrixData.headers.forEach(r => html += `<th>${r}</th>`);
+            html += '<th>Lvl</th></tr>';
             matrixData.rows.forEach(row => {
-                let tr = `<tr><td>${row.user}</td>`;
-                row.permissions.forEach(p => tr += `<td class="${p===1?'granted':'denied'}">${p}</td>`);
-                tr += `<td>${row.level}</td></tr>`; t.innerHTML += tr;
+                html += `<tr><td>${row.user}</td>`;
+                row.permissions.forEach(p => html += `<td class="${p===1?'granted':'denied'}">${p}</td>`);
+                html += `<td>${row.level}</td></tr>`;
             });
+            t.innerHTML = html;
         }
         renderMatrix();
 
@@ -81,16 +82,21 @@
             out.innerText = "Calculating...";
             const res = await fetch('/api/navigate', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({user_id: currentUser, password: "pass123", start: document.getElementById('startLoc').value, destination: document.getElementById('destLoc').value})
+                body: JSON.stringify({start: document.getElementById('startLoc').value,
+                                      destination: document.getElementById('destLoc').value})
             });
+            if (res.status === 401) { window.location.href = '/'; return; }
             const data = await res.json();
-            out.innerText = data.error ? `❌ ${data.error}` : `✅ Path: ${data.path}\n📏 Dist: ${data.distance}\n🔐 Code: ${data.access_code}`;
+            out.innerText = data.error
+                ? `❌ ${data.error}`
+                : `✅ Path: ${data.path}\n📏 Dist: ${data.distance}\n🔐 Code: ${data.access_code}\n⏱ Wait: ${data.simulated_wait_time}`;
         }
 
         async function doMonitor() {
             const out = document.getElementById('monOut');
             out.innerText = "Fetching...";
             const res = await fetch('/api/monitoring');
+            if (res.status === 401) { window.location.href = '/'; return; }
             const data = await res.json();
             out.innerText = data.data.map(r => `${r.room}: ${r.people}/${r.capacity} (${r.status})`).join('\n');
         }
@@ -99,12 +105,14 @@
             const msg = document.getElementById('addMsg');
             const res = await fetch('/api/add_user', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({user_id: document.getElementById('newId').value, user_type: document.getElementById('newType').value})
+                body: JSON.stringify({user_id: document.getElementById('newId').value,
+                                      user_type: document.getElementById('newType').value})
             });
+            if (res.status === 401) { window.location.href = '/'; return; }
             const data = await res.json();
             msg.style.color = res.ok ? "green" : "red";
             msg.innerText = res.ok ? `✅ ${data.message}` : `❌ ${data.error}`;
-            if(res.ok) setTimeout(() => window.location.reload(), 1000);
+            if (res.ok) setTimeout(() => window.location.reload(), 1000);
         }
     </script>
 </body>

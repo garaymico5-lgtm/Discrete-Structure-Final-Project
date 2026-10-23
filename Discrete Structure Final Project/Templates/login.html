@@ -19,9 +19,8 @@
 <body>
     <div class="card">
         <h2>System Login</h2>
-        
-        <!-- FSM -->
-        <div class="fsm-bar" id="fsmVisualizer">
+
+        <div class="fsm-bar">
             <div class="fsm-state" id="state-Idle">Idle</div>
             <div class="fsm-state" id="state-Login">Login</div>
             <div class="fsm-state" id="state-Access_Granted">Granted</div>
@@ -39,7 +38,7 @@
     <script>
         function updateFSM(state) {
             document.querySelectorAll('.fsm-state').forEach(el => el.classList.remove('active'));
-            let el = document.getElementById('state-' + state.replace(" ", "_"));
+            const el = document.getElementById('state-' + state.replace(" ", "_"));
             if (el) el.classList.add('active');
         }
         updateFSM("Idle");
@@ -47,23 +46,26 @@
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             updateFSM("Login");
-            const res = await fetch('/api/navigate', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    user_id: document.getElementById('userId').value,
-                    password: document.getElementById('password').value,
-                    start: "Main Gate", destination: "Science Hall" // dummy data para mo-validate
-                })
-            });
-            const data = await res.json();
-            
-            if (data.error) {
-                updateFSM("Access Denied");
-                document.getElementById('errorMsg').innerText = data.error;
-            } else {
-                updateFSM("Access_Granted");
-                // I-redirect sa Dashboard
-                setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+            document.getElementById('errorMsg').innerText = "";
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: document.getElementById('userId').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                const data = await res.json();
+                updateFSM(data.state || "Access Denied");
+                if (res.ok) {
+                    setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+                } else {
+                    document.getElementById('errorMsg').innerText = data.error;
+                }
+            } catch (err) {
+                updateFSM("Idle");
+                document.getElementById('errorMsg').innerText = "Server error. Try again.";
             }
         });
     </script>
